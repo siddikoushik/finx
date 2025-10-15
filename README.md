@@ -1,0 +1,2 @@
+# finx
+finance calc app
