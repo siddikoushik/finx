@@ -6,7 +6,9 @@ import ResultCard from '../../components/ResultCard';
 import AppHeader from '../../components/AppHeader';
 import CenteredContainer from '../../components/CenteredContainer';
 import { simpleInterest, compoundInterest } from '../../utils/calculations';
-import { formatIndianCurrency } from '../../utils/formatting';
+import { formatCurrency } from '../../utils/formatting';
+import { useAuthStore, useSettingsStore } from '../../store';
+import { saveCalculation } from '../../utils';
 import { LayoutConfig } from '../../config/layout';
 
 interface InterestScreenProps {
@@ -14,8 +16,11 @@ interface InterestScreenProps {
 }
 
 export default function InterestScreen({ navigation }: InterestScreenProps) {
+  const { session } = useAuthStore();
+  const { locale, currency } = useSettingsStore();
   const [principal, setPrincipal] = useState('');
   const [rate, setRate] = useState('');
+  const [rateUnit, setRateUnit] = useState<'per_annum' | 'per_month'>('per_annum');
   const [timeValue, setTimeValue] = useState('');
   const [timeUnit, setTimeUnit] = useState('years');
   const [freq, setFreq] = useState('12');
@@ -28,15 +33,37 @@ export default function InterestScreen({ navigation }: InterestScreenProps) {
       return;
     }
 
-    const principalNum = parseFloat(principal.replace(/,/g, ''));
-    const rateNum = parseFloat(rate);
+    const principalNum = parseFloat(String(principal).replace(/[^0-9.\-]/g, ''));
+    let rateNum = parseFloat(rate);
     const timeNum = parseFloat(timeValue);
-    
+
+    // Convert rate to per annum if it's per month
+    if (rateUnit === 'per_month') rateNum = rateNum * 12;
+
     // Convert time to years
     const years = timeUnit === 'months' ? timeNum / 12 : timeNum;
-    
+
     setResSI(simpleInterest(principalNum, rateNum, years));
     setResCI(compoundInterest(principalNum, rateNum, years, parseFloat(freq)));
+  };
+
+  const onSave = async () => {
+    if (!session?.user?.id || (!resSI && !resCI)) {
+      alert('Please calculate first');
+      return;
+    }
+    try {
+      await saveCalculation(
+        session.user.id,
+        'interest',
+        { principal, rate, rateUnit, timeValue, timeUnit, freq },
+        { simple: resSI, compound: resCI },
+        `SI: ${formatCurrency(resSI.interest, currency, locale)} | CI: ${formatCurrency(resCI.interest, currency, locale)}`
+      );
+      alert('Saved to History!');
+    } catch (error) {
+      alert('Failed to save: ' + error);
+    }
   };
 
   return (
@@ -56,11 +83,21 @@ export default function InterestScreen({ navigation }: InterestScreenProps) {
               formatNumbers={true}
             />
             
-            <FormTextInput 
-              label="Interest Rate (% per annum)" 
-              value={rate} 
-              onChangeText={setRate} 
-              keyboardType="numeric" 
+            <FormTextInput
+              label="Interest Rate (%)"
+              value={rate}
+              onChangeText={setRate}
+              keyboardType="numeric"
+            />
+
+            <SegmentedButtons
+              value={rateUnit}
+              onValueChange={(v: any) => setRateUnit(v)}
+              buttons={[
+                { value: 'per_annum', label: 'Per Annum' },
+                { value: 'per_month', label: 'Per Month' },
+              ]}
+              style={styles.segmentedButtons}
             />
             
             <View style={styles.timeContainer}>
@@ -105,18 +142,22 @@ export default function InterestScreen({ navigation }: InterestScreenProps) {
             <Card.Content>
               <Text variant="titleLarge" style={styles.cardTitle}>Simple Interest</Text>
               
-              <ResultCard 
-                title="Interest Earned" 
-                value={formatIndianCurrency(resSI.interest)}
+              <ResultCard
+                title="Interest Earned"
+                value={formatCurrency(resSI.interest, currency, locale)}
                 subtitle="Simple interest amount"
                 type="profit"
               />
-              
-              <ResultCard 
-                title="Total Amount" 
-                value={formatIndianCurrency(resSI.amount)}
+
+              <ResultCard
+                title="Total Amount"
+                value={formatCurrency(resSI.amount, currency, locale)}
                 subtitle="Principal + Interest"
               />
+
+              <Button mode="contained" onPress={onSave} style={styles.successButton}>
+                Save to History
+              </Button>
             </Card.Content>
           </Card>
         )}
@@ -126,16 +167,16 @@ export default function InterestScreen({ navigation }: InterestScreenProps) {
             <Card.Content>
               <Text variant="titleLarge" style={styles.cardTitle}>Compound Interest</Text>
               
-              <ResultCard 
-                title="Interest Earned" 
-                value={formatIndianCurrency(resCI.interest)}
+              <ResultCard
+                title="Interest Earned"
+                value={formatCurrency(resCI.interest, currency, locale)}
                 subtitle="Compound interest amount"
                 type="profit"
               />
-              
-              <ResultCard 
-                title="Total Amount" 
-                value={formatIndianCurrency(resCI.amount)}
+
+              <ResultCard
+                title="Total Amount"
+                value={formatCurrency(resCI.amount, currency, locale)}
                 subtitle="Principal + Interest"
               />
             </Card.Content>
@@ -179,5 +220,10 @@ const styles = StyleSheet.create({
   buttonLabel: {
     fontWeight: 'bold',
     fontSize: LayoutConfig.fontSize.md,
+  },
+  successButton: {
+    marginTop: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
   },
 });

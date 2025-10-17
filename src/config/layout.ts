@@ -17,15 +17,15 @@ export const LayoutConfig = {
   
   // Dark theme colors
   darkColors: {
-    primary: '#1E3A8A',
-    secondary: '#10B981',
-    error: '#EF4444', 
-    profit: '#EF4444',    // Red for profits in dark theme
-    loss: '#10B981',      // Green for losses in dark theme
-    background: '#121212',
-    surface: '#1e1e1e',
-    text: '#ffffff',
-    textSecondary: '#b3b3b3',
+    primary: '#60A5FA',
+    secondary: '#34D399',
+    error: '#F87171',
+    profit: '#34D399',    // Green for profits in dark theme
+    loss: '#F87171',      // Red for losses in dark theme
+    background: '#0F172A',
+    surface: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#CBD5E1',
   },
 
   // Spacing
