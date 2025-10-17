@@ -39,3 +39,8 @@ export function parseFormattedNumber(formattedString: string): number {
 	const cleanString = String(formattedString).replace(/[^0-9.\-]/g, '');
 	return parseFloat(cleanString) || 0;
 }
+
+// Legacy alias for old imports
+export function parseIndianNumber(formattedString: string): number {
+	return parseFormattedNumber(formattedString);
+}

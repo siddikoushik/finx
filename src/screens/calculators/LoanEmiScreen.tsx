@@ -7,7 +7,7 @@ import AppHeader from '../../components/AppHeader';
 import CenteredContainer from '../../components/CenteredContainer';
 import { calculateEMI } from '../../utils/calculations';
 import { useAuthStore, useSettingsStore } from '../../store';
-import { saveCalculation } from '../../utils';
+import { saveCalculation, exportCSV, exportPDF } from '../../utils';
 import { formatCurrency } from '../../utils/formatting';
 import { LayoutConfig } from '../../config/layout';
 
@@ -58,6 +58,31 @@ export default function LoanEmiScreen({ navigation }: LoanEmiScreenProps) {
 	};
 
 	const toggleSchedule = () => setShowSchedule(!showSchedule);
+
+	const exportSchedule = async (as: 'csv' | 'pdf') => {
+		if (!result) return;
+		const rows = result.schedule.map((row: any) => ({
+			Month: row.month,
+			EMI: formatCurrency(row.emi, currency, locale),
+			Interest: formatCurrency(row.interest, currency, locale),
+			Principal: formatCurrency(row.principal, currency, locale),
+			Balance: formatCurrency(row.balance, currency, locale),
+		}));
+		if (as === 'csv') {
+			await exportCSV('emi_schedule.csv', rows);
+		} else {
+			const html = `
+				<html><body>
+				<h2>EMI Schedule</h2>
+				<table border="1" cellspacing="0" cellpadding="6">
+				<tr><th>Month</th><th>EMI</th><th>Interest</th><th>Principal</th><th>Balance</th></tr>
+				${rows.map(r => `<tr><td>${r.Month}</td><td>${r.EMI}</td><td>${r.Interest}</td><td>${r.Principal}</td><td>${r.Balance}</td></tr>`).join('')}
+				</table>
+				</body></html>
+			`;
+			await exportPDF('emi_schedule.pdf', html);
+		}
+	};
 
 	return (
 		<CenteredContainer>
@@ -130,6 +155,12 @@ export default function LoanEmiScreen({ navigation }: LoanEmiScreenProps) {
 									))}
 								</DataTable>
 							</ScrollView>
+
+							<View style={styles.buttonRow}>
+								<Button mode="outlined" onPress={() => exportSchedule('csv')} style={styles.outlinedButton}>Export CSV</Button>
+								<Button mode="contained" onPress={() => exportSchedule('pdf')} style={styles.primaryButton}>Export PDF</Button>
+							</View>
+
 							{result.schedule.length > 12 && (
 								<Text style={styles.note}>Showing first 12 months. Total {result.schedule.length} months.</Text>
 							)}
@@ -149,8 +180,8 @@ const styles = StyleSheet.create({
 	segmented: { marginTop: 8, marginBottom: 8 },
 	primaryButton: { ...LayoutConfig.button.primary, marginTop: 16 },
 	buttonLabel: { fontWeight: 'bold', fontSize: 16 },
-	buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 12 },
-	outlinedButton: { flex: 1, borderRadius: 8 },
-	successButton: { flex: 1, borderRadius: 8, backgroundColor: '#10B981' },
+	buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 12, flexWrap: 'wrap' },
+	outlinedButton: { flexGrow: 1, borderRadius: 8 },
+	successButton: { flexGrow: 1, borderRadius: 8, backgroundColor: '#10B981' },
 	note: { fontSize: 12, color: '#666', textAlign: 'center', marginTop: 8, fontStyle: 'italic' },
 });

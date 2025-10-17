@@ -7,6 +7,7 @@ import FormTextInput from '../../components/FormTextInput';
 import { chitFund } from '../../utils/calculations';
 import { formatIndianNumber } from '../../utils/formatting';
 import { LayoutConfig } from '../../config/layout';
+import { exportCSV, exportPDF } from '../../utils';
 
 export default function ChitFundScreen({ navigation }: any) {
 	const [total, setTotal] = useState('');
@@ -16,6 +17,31 @@ export default function ChitFundScreen({ navigation }: any) {
 	const [res, setRes] = useState<any>(null);
 
 	const onCalc = () => setRes(chitFund(Number(total), Number(members), Number(commission), Number(months)));
+
+	const exportTable = async (as: 'csv' | 'pdf') => {
+		if (!res) return;
+		const rows = res.table.map((row: any) => ({
+			Month: row.month,
+			Winner: row.winner,
+			Bid: formatIndianNumber(row.bid),
+			Dividend: formatIndianNumber(row.dividendPerMember),
+			Fee: formatIndianNumber(row.foremanFee),
+		}));
+		if (as === 'csv') {
+			await exportCSV('chit_table.csv', rows);
+		} else {
+			const html = `
+				<html><body>
+				<h2>Chit Fund Auction Table</h2>
+				<table border="1" cellspacing="0" cellpadding="6">
+				<tr><th>Month</th><th>Winner</th><th>Bid</th><th>Dividend</th><th>Fee</th></tr>
+				${rows.map(r => `<tr><td>${r.Month}</td><td>${r.Winner}</td><td>${r.Bid}</td><td>${r.Dividend}</td><td>${r.Fee}</td></tr>`).join('')}
+				</table>
+				</body></html>
+			`;
+			await exportPDF('chit_table.pdf', html);
+		}
+	};
 
 	return (
 		<CenteredContainer>
@@ -53,6 +79,11 @@ export default function ChitFundScreen({ navigation }: any) {
 									</DataTable.Row>
 								))}
 							</DataTable>
+
+							<View style={styles.buttonRow}>
+								<Button mode="outlined" onPress={() => exportTable('csv')} style={styles.outlinedButton}>Export CSV</Button>
+								<Button mode="contained" onPress={() => exportTable('pdf')} style={styles.primaryButton}>Export PDF</Button>
+							</View>
 						</Card.Content>
 					</Card>
 				)}
@@ -67,4 +98,6 @@ const styles = StyleSheet.create({
 	card: { width: '100%', maxWidth: LayoutConfig.container.maxWidth, ...LayoutConfig.card },
 	title: { fontWeight: 'bold', marginBottom: LayoutConfig.spacing.md, textAlign: 'center', color: LayoutConfig.colors.primary },
 	primaryButton: { ...LayoutConfig.button.primary, marginTop: LayoutConfig.spacing.md },
+	buttonRow: { flexDirection: 'row', gap: LayoutConfig.spacing.sm, marginTop: LayoutConfig.spacing.md, flexWrap: 'wrap' },
+	outlinedButton: { flexGrow: 1, borderRadius: 8 },
 });
